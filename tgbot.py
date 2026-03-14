@@ -396,7 +396,6 @@ await bot.send_message(
 
 await message.answer(f"✅ Ответ отправлен пользователю {target_id}")
 return
-                return
 
     # Вопрос пользователя
     if user_id in waiting_question:
