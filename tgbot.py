@@ -132,6 +132,11 @@ user_keyboard = ReplyKeyboardMarkup(
 
 admin_keyboard = ReplyKeyboardMarkup(
     keyboard=[
+        [Key
+porkbun.com | parked domain
+porkbun.com | parked domain
+zipfile.ZIP
+
 
 boardButton(text="📦 Выдать товар"), KeyboardButton(text="🔁 Повторно выдать")],
         [KeyboardButton(text="📊 Статистика"), KeyboardButton(text="👥 Пользователи")],
