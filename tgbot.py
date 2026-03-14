@@ -152,7 +152,7 @@ if message.from_user.id == ADMIN_ID:
         )
         return
 
-    await message.answer(
+await message.answer(
         "👋 Привет!\nDLL стоит 60₽ / 100 голды\nВыберите действие:",
         reply_markup=user_keyboard
     )
