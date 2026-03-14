@@ -132,10 +132,7 @@ user_keyboard = ReplyKeyboardMarkup(
 
 admin_keyboard = ReplyKeyboardMarkup(
     keyboard=[
-        [Key
-
-
-boardButton(text="📦 Выдать товар"), KeyboardButton(text="🔁 Повторно выдать")],
+        [KeyboardButton(text="📦 Выдать товар"), KeyboardButton(text="🔁 Повторно выдать")],
         [KeyboardButton(text="📊 Статистика"), KeyboardButton(text="👥 Пользователи")],
         [KeyboardButton(text="📨 Рассылка")],
         [KeyboardButton(text="🏠 Меню пользователя")]
