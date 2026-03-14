@@ -1,15 +1,15 @@
 import asyncio
 import os
-import zipfile
 import tempfile
 import time
+import zipfile
 from pathlib import Path
 
 from aiogram import Bot, Dispatcher, F, types
 from aiogram.filters import Command
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, FSInputFile
 
-TOKEN = "8749394795:AAGkfPTC3lkFKCMYT52F9Y1FdHoBztk_b78"
+TOKEN = os.getenv("BOT_TOKEN") or "ТВОЙ_ТОКЕН"
 ADMIN_ID = int(os.getenv("ADMIN_ID") or 6667142324)
 
 USERS_FILE = "users.txt"
@@ -18,60 +18,70 @@ ISSUED_FILE = "issued_users.txt"
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
 
-
-def load_ids(filename: str):
+# ----------------------------
+# Файлы и данные
+# ----------------------------
+def load_ids(filename: str) -> set[int]:
     if not os.path.exists(filename):
         return set()
+
+    result = set()
     with open(filename, "r", encoding="utf-8") as f:
-        return set(int(line.strip()) for line in f if line.strip().isdigit())
+        for line in f:
+            line = line.strip()
+            if line.isdigit():
+                result.add(int(line))
+    return result
 
-
-def save_id(filename: str, user_id: int):
+def append_id(filename: str, user_id: int) -> None:
     with open(filename, "a", encoding="utf-8") as f:
         f.write(f"{user_id}\n")
-
 
 users = load_ids(USERS_FILE)
 issued_users = load_ids(ISSUED_FILE)
 
 waiting_question = set()
-admin_reply_map = {}
-admin_state = {}
+admin_reply_map: dict[int, int] = {}
+admin_state: dict[int, str] = {}
+temp_data: dict[int, int] = {}
 
+def add_user(user_id: int) -> None:
+    if user_id not in users:
+        users.add(user_id)
+        append_id(USERS_FILE, user_id)
+
+def was_issued(user_id: int) -> bool:
+    return user_id in issued_users
+
+def mark_issued(user_id: int) -> None:
+    if user_id not in issued_users:
+        issued_users.add(user_id)
+        append_id(ISSUED_FILE, user_id)
+
+# ----------------------------
+# Клавиатуры
+# ----------------------------
 user_keyboard = ReplyKeyboardMarkup(
     keyboard=[
-        [KeyboardButton(text="💰 Купить")],
-        [KeyboardButton(text="❓ Задать вопрос")]
+        [KeyboardButton(text="💰 Купить"), KeyboardButton(text="❓ Задать вопрос")],
+        [KeyboardButton(text="🛠 Админ панель")]
     ],
     resize_keyboard=True
 )
 
 admin_keyboard = ReplyKeyboardMarkup(
     keyboard=[
-        [KeyboardButton(text="📦 Выдать товар"), KeyboardButton(text="📊 Статистика")],
-        [KeyboardButton(text="📨 Рассылка"), KeyboardButton(text="👥 Пользователи")],
-        [KeyboardButton(text="🏠 Обычное меню")]
+        [KeyboardButton(text="📦 Выдать товар"), KeyboardButton(text="🔁 Повторно выдать")],
+        [KeyboardButton(text="📊 Статистика"), KeyboardButton(text="👥 Пользователи")],
+        [KeyboardButton(text="📨 Рассылка")],
+        [KeyboardButton(text="🏠 Меню пользователя")]
     ],
     resize_keyboard=True
 )
 
-
-def add_user(user_id: int):
-    if user_id not in users:
-        users.add(user_id)
-        save_id(USERS_FILE, user_id)
-
-
-def mark_issued(user_id: int):
-    if user_id not in issued_users:
-        issued_users.add(user_id)
-        save_id(ISSUED_FILE, user_id)
-
-
-def was_issued(user_id: int) -> bool:
-    return user_id in issued_users
-
-
+# ----------------------------
+# Работа с товаром
+# ----------------------------
 def build_personal_zip(user_id: int, username: str | None = None) -> str:
     source_zip = Path("dll.zip")
 
@@ -102,8 +112,7 @@ def build_personal_zip(user_id: int, username: str | None = None) -> str:
 
     return str(output_zip)
 
-
-async def send_product(target_id: int, force: bool = False):
+async def send_product(target_id: int, force: bool = False) -> None:
     if was_issued(target_id) and not force:
         raise ValueError("Этому пользователю товар уже выдавался")
 
@@ -117,18 +126,28 @@ async def send_product(target_id: int, force: bool = False):
         caption="✅ Спасибо за покупку! Вот ваш DLL файл:"
     )
 
-    video_file = FSInputFile("instruction.mp4")
-    await bot.send_video(
-        target_id,
-        video_file,
-        caption="🎬 Видеоинструкция: как использовать DLL"
-    )
+    video_path = Path("instruction.mp4")
+    if video_path.exists():
+        video_file = FSInputFile("instruction.mp4")
+        await bot.send_video(
+            target_id,
+            video_file,
+            caption="🎬 Видеоинс
+porkbun.com | parked domain
+porkbun.com | parked domain
+zipfile.ZIP
+
+
+трукция: как использовать DLL"
+        )
 
     if not was_issued(target_id):
         mark_issued(target_id)
 
-
-async def send_to_admin_with_link(source_message: types.Message, header_text: str):
+# ----------------------------
+# Уведомление админу
+# ----------------------------
+async def send_to_admin_with_link(source_message: types.Message, header_text: str) -> None:
     sent_header = await bot.send_message(ADMIN_ID, header_text)
 
     forwarded = await bot.forward_message(
@@ -140,31 +159,32 @@ async def send_to_admin_with_link(source_message: types.Message, header_text: st
     admin_reply_map[sent_header.message_id] = source_message.from_user.id
     admin_reply_map[forwarded.message_id] = source_message.from_user.id
 
-
+# ----------------------------
+# Команды
+# ----------------------------
 @dp.message(Command("start"))
 async def start_handler(message: types.Message):
     add_user(message.from_user.id)
 
-if message.from_user.id == ADMIN_ID:
+    if message.from_user.id == ADMIN_ID:
         await message.answer(
-            "👋 Привет, админ.\nВыбери режим:",
+            "👋 Привет, админ.\nОткрываю админ-панель.",
             reply_markup=admin_keyboard
         )
         return
 
-await message.answer(
+    await message.answer(
         "👋 Привет!\nDLL стоит 60₽ / 100 голды\nВыберите действие:",
         reply_markup=user_keyboard
     )
 
-
 @dp.message(Command("admin"))
-async def admin_panel(message: types.Message):
+async def admin_handler(message: types.Message):
     if message.from_user.id != ADMIN_ID:
+        await message.answer("❌ У вас нет доступа к админ-панели.")
         return
 
-    await message.answer("🔧 Админ панель", reply_markup=admin_keyboard)
-
+    await message.answer("🛠 Админ панель", reply_markup=admin_keyboard)
 
 @dp.message(Command("resend"))
 async def resend_command(message: types.Message):
@@ -184,21 +204,31 @@ async def resend_command(message: types.Message):
     except Exception as e:
         await message.answer(f"❌ Ошибка повторной выдачи: {e}")
 
+# ----------------------------
+# Кнопки меню
+# ----------------------------
+@dp.message(F.text == "🛠 Админ панель")
+async def open_admin_panel(message: types.Message):
+    if message.from_user.id != ADMIN_ID:
+        await message.answer("❌ У вас нет доступа к админ-панели.")
+        return
 
-@dp.message(F.text == "🏠 Обычное меню")
-async def normal_menu(message: types.Message):
-    if message.from_user.id == ADMIN_ID:
-        await message.answer(
-            "Обычное меню открыто.",
-            reply_markup=user_keyboard
-        )
+    await message.answer("🛠 Админ панель", reply_markup=admin_keyboard)
 
+@dp.message(F.text == "🏠 Меню пользователя")
+async def open_user_menu(message: types.Message):
+    await message.answer(
+        "🏠 Меню пользователя открыто.",
+        reply_markup=user_keyboard
+    )
 
 @dp.message(F.text == "💰 Купить")
 async def buy_handler(message: types.Message):
     add_user(message.from_user.id)
 
-    await message.answer("💳 После оплаты отправьте сюда скриншот оплаты.")
+    await message.answer(
+        "💳 После оплаты отправьте сюда скриншот оплаты."
+    )
 
     await send_to_admin_with_link(
         message,
@@ -210,14 +240,65 @@ async def buy_handler(message: types.Message):
         f"обычным текстом — ответить пользователю"
     )
 
-
 @dp.message(F.text == "❓ Задать вопрос")
 async def ask_question_handler(message: types.Message):
     add_user(message.from_user.id)
     waiting_question.add(message.from_user.id)
     await message.answer("✍️ Напишите ваш вопрос одним сообщением.")
 
+@dp.message(F.text == "📦 Выдать товар")
+async def give_product_button(message: types.Message):
+    if message.from_user.id != ADMIN_ID:
+        return
 
+    admin_state[ADMIN_ID] = "waiting_give_id"
+    await message.answer("Введите ID пользователя для выдачи товара.")
+
+@dp.message(F.text == "🔁 Повторно выдать")
+async def resend_product_button(message: types.Message):
+    if message.from_user.id != ADMIN_ID:
+        return
+
+    admin_state[ADMIN_ID] = "waiting_resend_id"
+    await message.answer("Введите ID пользователя для повторной выдачи товара.")
+
+@dp.message(F.text == "📊 Статистика")
+async def stats_button(
+
+
+message: types.Message):
+    if message.from_user.id != ADMIN_ID:
+        return
+
+    await message.answer(
+        f"📊 Статистика:\n\n"
+        f"Всего пользователей: {len(users)}\n"
+        f"Выдано товаров: {len(issued_users)}"
+    )
+
+@dp.message(F.text == "👥 Пользователи")
+async def users_button(message: types.Message):
+    if message.from_user.id != ADMIN_ID:
+        return
+
+    if not users:
+        await message.answer("Пользователей пока нет.")
+        return
+
+    text = "👥 Пользователи:\n\n" + "\n".join(str(uid) for uid in sorted(users))
+    await message.answer(text[:4000])
+
+@dp.message(F.text == "📨 Рассылка")
+async def broadcast_button(message: types.Message):
+    if message.from_user.id != ADMIN_ID:
+        return
+
+    admin_state[ADMIN_ID] = "waiting_broadcast"
+    await message.answer("Введите текст для рассылки всем пользователям.")
+
+# ----------------------------
+# Фото (скрин оплаты)
+# ----------------------------
 @dp.message(F.photo)
 async def photo_handler(message: types.Message):
     add_user(message.from_user.id)
@@ -234,176 +315,107 @@ async def photo_handler(message: types.Message):
 
     await message.answer("✅ Скрин отправлен администратору.")
 
-
-@dp.message(F.text == "📦 Выдать товар")
-async def admin_give_product(message: types.Message):
-    if message.from_user.id != ADMIN_ID:
-        return
-
-    admin_state[ADMIN_ID] = "waiting_give_id"
-    await message.answer("Введите ID пользователя, которому нужно выдать товар.")
-
-
-@dp.message(F.text == "📊 Статистика")
-async def admin_stats(message: types.Message):
-    if message.from_user.id != ADMIN_ID:
-        return
-
-    await message.answer(
-        f"📊 Статистика:\n\n"
-        f"Всего пользователей: {len(users)}\n"
-        f"Выдано товаров: {len(issued_users)}"
-    )
-
-
-@dp.message(F.text == "👥 Пользователи")
-async def admin_users(message: types.Message):
-    if message.from_user.id != ADMIN_ID:
-        return
-
-    if not users:
-        await message.answer("Пользователей пока нет.")
-        return
-
-    text = "👥 Пользователи:\n\n" + "\n".join(str(uid) for uid in users)
-    await message.answer(text[:4000])
-
-
-@dp.message(F.text == "📨 Рассылка")
-async def admin_broadcast(message: types.Message):
-    if message.from_user.id != ADMIN_ID:
-        return
-
-    admin_state[ADMIN_ID] = "waiting_broadcast"
-    await message.answer("Введите текст для рассылки всем пользователям.")
-
-
+# ----------------------------
+# Основной текстовый обработчик
+# ----------------------------
 @dp.message()
 async def text_handler(message: types.Message):
-
     user_id = message.from_user.id
-    text = message.text
+    text = message.text or ""
 
-    users = load_ids(USERS_FILE)
-    issued = load_ids(ISSUED_FILE)
+    add_user(user_id)
 
-    if user_id not in users:
-        users.add(user_id)
-        save_ids(USERS_FILE, users)
+    # Логика админа
+    if user_id == ADMIN_ID:
+        state = admin_state.get(ADMIN_ID)
 
-    state = user_states.get(user_id)
+        if state == "waiting_give_id":
+            if not text.isdigit():
+                await message.answer("❌ ID должен состоять только из цифр.")
+                return
 
-    if state == "waiting_broadcast":
-
-        sent = 0
-
-        for uid in users:
-            try:
-                await bot.send_message(uid, text)
-                sent += 1
-            except:
-                pass
-
-        await message.answer(f"Рассылка отправлена {sent} пользователям")
-
-        user_states[user_id] = None
-        return
-
-    if text == "📢 Рассылка" and user_id == ADMIN_ID:
-
-        user_states[user_id] = "waiting_broadcast"
-
-        await message.answer(
-            "Отправь сообщение для рассылки"
-        )
-
-        return
-
-    if text == "📊 Пользователи" and user_id == ADMIN_ID:
-
-        await message.answer(
-            f"Всего пользователей: {len(users)}"
-        )
-
-        return
-
-    if text == "📦 Выдать товар" and user_id == ADMIN_ID:
-
-        await message.answer(
-            "Отправь ID пользователя"
-        )
-
-        user_states[user_id] = "waiting_user_id"
-
-        return
-
-    if state == "waiting_user_id":
-
-        try:
             target_id = int(text)
-        except:
-            await message.answer("ID должен быть числом")
+            try:
+                await send_product(target_id, force=False)
+                await message.answer(f"✅ Товар выдан пользователю {target_id}")
+            except Exception as e:
+                await message.answer(f"❌ {e}")
+
+            admin_state.pop(ADMIN_ID, None)
             return
 
-        if target_id in issued:
-            await message.answer("Пользователь уже получил товар")
+        if state == "waiting_resend_id":
+            if not text.isdigit():
+                await message.answer("❌ ID должен состоять только из цифр.")
+                return
+
+            target_id = int(text)
+            try:
+                await send_product(target_id, force=True)
+                await message.answer(f"✅ Повторная выдача отправлена пользователю {target_id}")
+            except Exception as e:
+                await message.answer(f"❌ {e}")
+
+            admin_state.pop(ADMIN_ID, None)
             return
 
-        try:
+        if state == "waiting_broadcast":
+            success = 0
+            failed = 0
 
-            await bot.send_document(
-                target_id,
-                types.FSInputFile("product.zip"),
-                caption="Спасибо за покупку"
+            for uid in users:
+                try:
+                    await bot.send_message(uid, f"📢 Сообщение от администрации:\n\n{text}")
+                    success += 1
+                except Exception:
+                    failed += 1
+
+            await message.answer(
+                f"✅ Рассылка завершена.\nУспешно: {success}\nОшибок: {failed}"
             )
+            admin_state.pop(ADMIN_ID, None)
+            return
 
-            issued.add(target_id)
-            save_ids(ISSUED_FILE, issued)
+        # Reply-выдача и reply-ответ
+        if message.reply_to_message:
+            replied_message_id = message.reply_to_message.message_id
+            target_id = admin_reply_map.get(replied_message_id)
 
-            await message.answer("Товар выдан")
+            if target_id:
+                if text.strip().lower() in ["+", "/send", "выдать"]:
+                    try:
+                        await send_product(target_id, force=False)
+                        await message.answer(f"✅ Товар выдан пользователю {target_id}")
+                    except Exception as e:
+                        await message.answer(f"❌ {e}")
+                    return
 
-        except:
-            await message.answer("Не удалось отправить файл")
+                await bot.send_me
 
-        user_states[user_id] = None
 
-        return
+ssage(
+                    target_id,
+                    f"📩 Ответ администратора:\n\n{text}"
+                )
+                await message.answer(f"✅ Ответ отправлен пользователю {target_id}")
+                return
 
-    if text == "🔥 Купить":
+    # Вопрос пользователя
+    if user_id in waiting_question:
+        waiting_question.remove(user_id)
 
-        await message.answer(
-            "Напиши админу для покупки"
+        await send_to_admin_with_link(
+            message,
+            f"❓ Вопрос от пользователя\n"
+            f"ID: {user_id}\n\n"
+            f"Ответь реплаем обычным текстом, чтобы ответить пользователю"
         )
 
+        await message.answer("✅ Вопрос отправлен администратору")
         return
-
-    if text == "❓ Задать вопрос":
-
-        await message.answer(
-            "Напиши свой вопрос, админ ответит"
-        )
-
-        return
-
-    if user_id != ADMIN_ID:
-
-        try:
-
-            await bot.send_message(
-                ADMIN_ID,
-                f"Сообщение\nID:{user_id}\n\n{text}"
-            )
-
-            await message.answer("Сообщение отправлено")
-
-        except:
-
-            await message.answer("Ошибка отправки")
-
 
 async def main():
     await dp.start_polling(bot)
 
-
-if name == "main":
+if __name__ == "__main__":
     asyncio.run(main())
