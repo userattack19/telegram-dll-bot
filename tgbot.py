@@ -303,7 +303,7 @@ if state == "waiting_give_id":
             admin_state.pop(ADMIN_ID, None)
             return
 
-        if state == "waiting_broadcast":
+    if state == "waiting_broadcast":
             success = 0
             failed = 0
 
