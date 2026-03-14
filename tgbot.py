@@ -133,9 +133,6 @@ user_keyboard = ReplyKeyboardMarkup(
 admin_keyboard = ReplyKeyboardMarkup(
     keyboard=[
         [Key
-porkbun.com | parked domain
-porkbun.com | parked domain
-zipfile.ZIP
 
 
 boardButton(text="📦 Выдать товар"), KeyboardButton(text="🔁 Повторно выдать")],
@@ -384,3 +381,5 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
+
