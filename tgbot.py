@@ -389,13 +389,13 @@ async def text_handler(message: types.Message):
                     return
 
                 await bot.send_me
+await bot.send_message(
+    target_id,
+    f"📩 Ответ администратора:\n\n{text}"
+)
 
-
-ssage(
-                    target_id,
-                    f"📩 Ответ администратора:\n\n{text}"
-                )
-                await message.answer(f"✅ Ответ отправлен пользователю {target_id}")
+await message.answer(f"✅ Ответ отправлен пользователю {target_id}")
+return
                 return
 
     # Вопрос пользователя
