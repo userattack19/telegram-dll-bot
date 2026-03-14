@@ -2,7 +2,7 @@ import asyncio
 from aiogram import Bot, Dispatcher, types
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 
-TOKEN = "8749394795:AAH0S-KIkohIkBC09fnl6ma0QC5y_TUspds"
+TOKEN = "8749394795:AAGzNQP7S82ddWWqLT4dNzMfDnpOU20E8-I"
 ADMIN_ID = 6667142324   # твой telegram id
 
 bot = Bot(token=TOKEN)
