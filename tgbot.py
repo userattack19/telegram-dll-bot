@@ -132,7 +132,7 @@ async def send_product(target_id: int, force: bool = False) -> None:
         await bot.send_video(
             target_id,
             video_file,
-            caption="🎬 Видеоинс
+            caption="🎬 Видеоинструкция"
 porkbun.com | parked domain
 porkbun.com | parked domain
 zipfile.ZIP
