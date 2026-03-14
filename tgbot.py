@@ -127,8 +127,6 @@ async def send_product(target_id: int, force: bool = False) -> None:
     )
 
     video_path = Path("instruction.mp4")
-    if video_path.exists():
-        video_path = Path("instruction.mp4")
 
 if video_path.exists():
     video_file = FSInputFile("instruction.mp4")
@@ -136,10 +134,8 @@ if video_path.exists():
     await bot.send_video(
         target_id,
         video_file,
-        caption="🎬 Видеоинструкция: как использовать DLL"
+        caption="📄 Видеоинструкция: как использовать DLL"
     )
-
-    if not was_issued(target_id):
         mark_issued(target_id)
 
 # ----------------------------
