@@ -280,78 +280,125 @@ async def admin_broadcast(message: types.Message):
 
 @dp.message()
 async def text_handler(message: types.Message):
+
     user_id = message.from_user.id
-    text = message.text or ""
+    text = message.text
 
-    add_user(user_id)
+    users = load_ids(USERS_FILE)
+    issued = load_ids(ISSUED_FILE)
 
-    if user_id == ADMIN_ID:
-        state = admin_state.get(ADMIN_ID)
+    if user_id not in users:
+        users.add(user_id)
+        save_ids(USERS_FILE, users)
 
-
-if state == "waiting_give_id":
-            if text.isdigit():
-                target_id = int(text)
-                try:
-                    await send_product(target_id)
-                    await message.answer(f"✅ Товар выдан пользователю {target_id}")
-                except Exception as e:
-                    await message.answer(f"❌ {e}")
-            else:
-                await message.answer("❌ ID должен состоять только из цифр.")
-
-            admin_state.pop(ADMIN_ID, None)
-            return
+    state = user_states.get(user_id)
 
     if state == "waiting_broadcast":
-            success = 0
-            failed = 0
 
-            for uid in users:
-                try:
-                    await bot.send_message(uid, f"📢 Сообщение от администрации:\n\n{text}")
-                    success += 1
-                except Exception:
-                    failed += 1
+        sent = 0
 
-            await message.answer(
-                f"✅ Рассылка завершена.\nУспешно: {success}\nОшибок: {failed}"
-            )
-            admin_state.pop(ADMIN_ID, None)
-            return
+        for uid in users:
+            try:
+                await bot.send_message(uid, text)
+                sent += 1
+            except:
+                pass
 
-        if message.reply_to_message:
-            replied_message_id = message.reply_to_message.message_id
-            target_id = admin_reply_map.get(replied_message_id)
+        await message.answer(f"Рассылка отправлена {sent} пользователям")
 
-            if target_id:
-                if text.strip().lower() in ["+", "/send", "выдать"]:
-                    try:
-                        await send_product(target_id)
-                        await message.answer(f"✅ Товар выдан пользователю {target_id}")
-                    except Exception as e:
-                        await message.answer(f"❌ {e}")
-                    return
+        user_states[user_id] = None
+        return
 
-                await bot.send_message(
-                    target_id,
-                    f"📩 Ответ администратора:\n\n{text}"
-                )
-                await message.answer(f"✅ Ответ отправлен пользователю {target_id}")
-                return
+    if text == "📢 Рассылка" and user_id == ADMIN_ID:
 
-    if user_id in waiting_question:
-        waiting_question.remove(user_id)
+        user_states[user_id] = "waiting_broadcast"
 
-        await send_to_admin_with_link(
-            message,
-            f"❓ Вопрос от пользователя\n"
-            f"ID: {user_id}\n\n"
-            f"Ответь реплаем обычным текстом, чтобы ответить пользователю"
+        await message.answer(
+            "Отправь сообщение для рассылки"
         )
 
-        await message.answer("✅ Вопрос отправлен администратору")
         return
+
+    if text == "📊 Пользователи" and user_id == ADMIN_ID:
+
+        await message.answer(
+            f"Всего пользователей: {len(users)}"
+        )
+
+        return
+
+    if text == "📦 Выдать товар" and user_id == ADMIN_ID:
+
+        await message.answer(
+            "Отправь ID пользователя"
+        )
+
+        user_states[user_id] = "waiting_user_id"
+
+        return
+
+    if state == "waiting_user_id":
+
+        try:
+            target_id = int(text)
+        except:
+            await message.answer("ID должен быть числом")
+            return
+
+        if target_id in issued:
+            await message.answer("Пользователь уже получил товар")
+            return
+
+        try:
+
+            await bot.send_document(
+                target_id,
+                types.FSInputFile("product.zip"),
+                caption="Спасибо за покупку"
+            )
+
+            issued.add(target_id)
+            save_ids(ISSUED_FILE, issued)
+
+            await message.answer("Товар выдан")
+
+        except:
+            await message.answer("Не удалось отправить файл")
+
+        user_states[user_id] = None
+
+        return
+
+    if text == "🔥 Купить":
+
+        await message.answer(
+            "Напиши админу для покупки"
+        )
+
+        return
+
+    if text == "❓ Задать вопрос":
+
+        await message.answer(
+            "Напиши свой вопрос, админ ответит"
+        )
+
+        return
+
+    if user_id != ADMIN_ID:
+
+        try:
+
+            await bot.send_message(
+                ADMIN_ID,
+                f"Сообщение\nID:{user_id}\n\n{text}"
+            )
+
+            await message.answer("Сообщение отправлено")
+
+        except:
+
+            await message.answer("Ошибка отправки")
 
 
 async def main():
