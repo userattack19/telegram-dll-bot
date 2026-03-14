@@ -377,25 +377,25 @@ async def text_handler(message: types.Message):
         # Reply-выдача и reply-ответ
         if message.reply_to_message:
             replied_message_id = message.reply_to_message.message_id
-            target_id = admin_reply_map.get(replied_message_id)
+            replied_message_id = message.reply_to_message.message_id
+        target_id = admin_reply_map.get(replied_message_id)
 
-            if target_id:
-                if text.strip().lower() in ["+", "/send", "выдать"]:
-                    try:
-                        await send_product(target_id, force=False)
-                        await message.answer(f"✅ Товар выдан пользователю {target_id}")
-                    except Exception as e:
-                        await message.answer(f"❌ {e}")
-                    return
+        if target_id:
+            if text.strip().lower() in ["+", "/send", "выдать"]:
+                try:
+                    await send_product(target_id, force=False)
+                    await message.answer(f"📦 Товар выдан пользователю {target_id}")
+                except Exception as e:
+                    await message.answer(f"❌ {e}")
+                return
 
-                await bot.send_me
-await bot.send_message(
-    target_id,
-    f"📩 Ответ администратора:\n\n{text}"
-)
+            await bot.send_message(
+                target_id,
+                f"📩 Ответ администратора:\n\n{text}"
+            )
 
-await message.answer(f"✅ Ответ отправлен пользователю {target_id}")
-return
+            await message.answer(f"✅ Ответ отправлен пользователю {target_id}")
+            return
 
     # Вопрос пользователя
     if user_id in waiting_question:
@@ -405,7 +405,7 @@ return
             message,
             f"❓ Вопрос от пользователя\n"
             f"ID: {user_id}\n\n"
-            f"Ответь реплаем обычным текстом, чтобы ответить пользователю"
+            f"Ответьте реплаем обычным текстом, чтобы ответить пользователю"
         )
 
         await message.answer("✅ Вопрос отправлен администратору")
