@@ -9,7 +9,7 @@ from aiogram import Bot, Dispatcher, F, types
 from aiogram.filters import Command
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, FSInputFile
 
-TOKEN = "8749394795:AAETQPuVtGNYzUhPvh8UDyPyv-t0EuVXKwU"
+TOKEN = "8749394795:AAG9HkJM3_wBephFCLCt8uOWhnmm11TOXJQ"
 ADMIN_ID = int(os.getenv("ADMIN_ID") or 6667142324)
 
 USERS_FILE = "users.txt"
