@@ -152,7 +152,7 @@ async def start_handler(message: types.Message):
         return
 
     await message.answer(
-        "👋 Привет!\nDLL стоит 60₽ / 100 голды\nВыберите действие:",
+        "👋 Привет!\nDLL стоит 60₽ 2200701952763412 Т.банк Кирилл\nВыберите действие:",
         reply_markup=user_keyboard
     )
 
