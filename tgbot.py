@@ -152,7 +152,7 @@ async def start_handler(message: types.Message):
         return
 
     await message.answer(
-        "👋 Привет!\nDLL стоит 60₽ 2200701952763412 Т.банк Кирилл\nВыберите действие:",
+        "👋 Привет!\nDLL стоит 60₽\nВыберите действие:",
         reply_markup=user_keyboard
     )
 
@@ -198,7 +198,7 @@ async def open_user_menu(message: types.Message):
 async def buy_handler(message: types.Message):
     add_user(message.from_user.id)
 
-    await message.answer("💳 После оплаты отправьте сюда скриншот оплаты.")
+    await message.answer("💳 После оплаты отправьте сюда скриншот оплаты 2200701952763412 Т.банк Кирилл.")
 
     await send_to_admin_with_link(
         message,
